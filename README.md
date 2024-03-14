@@ -1,4 +1,4 @@
-# HashGAN
+# 3D aware GAN using Neural Hash Encoding for Semantic Style Controls
 
 ## Preprocess Dataset
 1. Download Celeba Mask-HQ dataset [here](https://drive.google.com/file/d/1badu11NqxGf6qM3PTTooQDJvQbejgbTv/view) 
