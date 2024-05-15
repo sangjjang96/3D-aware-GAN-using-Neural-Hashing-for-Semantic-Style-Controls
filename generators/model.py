@@ -563,8 +563,8 @@ class Decoder(nn.Module):
         self.n_latent = (self.log_size - self.log_in_size) * 2 + 2
 
     def mean_latent(self, renderer_latent):
-        # latent = self.style(renderer_latent).mean(0, keepdim=True)
-        latent = self.bright(renderer_latent).mean(0, keepdim=True)
+        latent = self.style(renderer_latent).mean(0, keepdim=True)
+        # latent = self.bright(renderer_latent).mean(0, keepdim=True)
 
         return latent
 
@@ -575,8 +575,8 @@ class Decoder(nn.Module):
                                  truncation_latent=None, input_is_latent=False,
                                  randomize_noise=True):
         if not input_is_latent:
-            # styles = [self.style(s) for s in styles]
-            styles = [self.bright(s) for s in styles]
+            styles = [self.style(s) for s in styles]
+            # styles = [self.bright(s) for s in styles]
 
         if noise is None:
             if randomize_noise:
@@ -699,7 +699,7 @@ class Generator(nn.Module):
         return noises
 
     def mean_latent(self, n_latent, device):
-        latent_in = torch.randn(n_latent, 256, device=device)
+        latent_in = torch.randn(n_latent, 16, device=device)
         renderer_latent = self.bright(latent_in)
         renderer_latent_mean = renderer_latent.mean(0, keepdim=True)
         if self.full_pipeline:

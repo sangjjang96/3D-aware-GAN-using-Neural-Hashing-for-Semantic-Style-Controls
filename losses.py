@@ -27,7 +27,7 @@ def eikonal_loss(eikonal_term, sdf=None, beta=100):
 def d_logistic_loss(real_pred, fake_pred):
     real_loss = F.softplus(-real_pred)
     fake_loss = F.softplus(fake_pred)
-
+    
     return real_loss.mean() + fake_loss.mean()
 
 def d_classify_loss(real_pred, fake_pred, label):

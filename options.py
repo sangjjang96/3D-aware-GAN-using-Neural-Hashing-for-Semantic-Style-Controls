@@ -26,7 +26,7 @@ class BaseOptions():
         training.add_argument("--trained_ckpt", type=str, default='', help='trained model path')
         training.add_argument("--pretrain_render_path", type=str, default='', help='pretrain render model path')
         training.add_argument("--iter", type=int, default=300000, help="total number of training iterations")
-        training.add_argument("--batch", type=int, default=4, help="batch sizes for each GPU. A single RTX2080 can fit batch=4, chunck=1 into memory.")
+        training.add_argument("--batch", type=int, default=8, help="batch sizes for each GPU. A single RTX2080 can fit batch=4, chunck=1 into memory.")
         training.add_argument("--chunk", type=int, default=2, help='number of samples within a batch to processed in parallel, decrease if running out of memory')
         training.add_argument("--val_n_sample", type=int, default=8, help="number of test samples generated during training")
         training.add_argument("--d_reg_every", type=int, default=16, help="interval for applying r1 regularization to the StyleGAN generator")
@@ -90,7 +90,7 @@ class BaseOptions():
         rendering.add_argument("--no_z_normalize", action='store_true', help='By default, the model normalizes input coordinates such that the z coordinate is in [-1,1]. When true that feature is disabled.')
         rendering.add_argument("--static_viewdirs", action='store_true', help='when true, use static viewing direction input to the MLP')
         # Ray intergration options
-        rendering.add_argument("--N_samples", type=int, default=24, help='number of samples per ray')
+        rendering.add_argument("--N_samples", type=int, default=42, help='number of samples per ray')
         rendering.add_argument("--no_offset_sampling", action='store_true', help='when true, use random stratified sampling when rendering the volume, otherwise offset sampling is used. (See Equation (3) in Sec. 3.2 of the paper)')
         rendering.add_argument("--perturb", type=float, default=1., help='set to 0. for no jitter, 1. for jitter')
         rendering.add_argument("--raw_noise_std", type=float, default=0., help='std dev of noise added to regularize sigma_a output, 1e0 recommended')

@@ -44,7 +44,7 @@ def train(opt, experiment_opt, loader, generator, discriminator, g_optim, d_opti
 
     accum = 0.5 ** (32 / (10 * 1000))
 
-    sample_z = [torch.randn(opt.val_n_sample, 256, device=device).repeat_interleave(8, dim=0)]
+    sample_z = [torch.randn(opt.val_n_sample, 16, device=device).repeat_interleave(8, dim=0)]
     sample_cam_extrinsics, sample_focals, sample_near, sample_far, _ = generate_camera_params(opt.renderer_output_size, device, batch=opt.val_n_sample, sweep=True,
     uniform=opt.camera.uniform, azim_range=opt.camera.azim,
     elev_range=opt.camera.elev, fov_ang=opt.camera.fov,
@@ -69,7 +69,7 @@ def train(opt, experiment_opt, loader, generator, discriminator, g_optim, d_opti
         real_imgs = real_imgs.to(device)
         real_segs = real_segs.to(device)
 
-        noise = mixing_noise(opt.batch, 256, opt.mixing, device)
+        noise = mixing_noise(opt.batch, 16, opt.mixing, device)
         cam_extrinsics, focal, near, far, gt_viewpoints = generate_camera_params(opt.renderer_output_size, device, batch=opt.batch, uniform=opt.camera.uniform, azim_range=opt.camera.azim,
         elev_range=opt.camera.elev, fov_ang=opt.camera.fov,
         dist_radius=opt.camera.dist_radius)
@@ -120,7 +120,7 @@ def train(opt, experiment_opt, loader, generator, discriminator, g_optim, d_opti
         requires_grad(discriminator, False)
 
         for j in range(0, opt.batch, opt.chunk):
-            noise = mixing_noise(opt.chunk, 256, opt.mixing, device)
+            noise = mixing_noise(opt.chunk, 16, opt.mixing, device)
             cam_extrinsics, focal, near, far, gt_viewpoints = generate_camera_params(opt.renderer_output_size, device, batch=opt.chunk,
             uniform=opt.camera.uniform, azim_range=opt.camera.azim,
             elev_range=opt.camera.elev, fov_ang=opt.camera.fov,
@@ -145,7 +145,7 @@ def train(opt, experiment_opt, loader, generator, discriminator, g_optim, d_opti
         g_regularize = (opt.g_reg_every > 0) and (i % opt.g_reg_every == 0)
         if g_regularize:
             path_batch_size = max(1, opt.batch // opt.path_batch_shrink)
-            path_noise = mixing_noise(path_batch_size, 256, opt.mixing, device)
+            path_noise = mixing_noise(path_batch_size, 16, opt.mixing, device)
             path_cam_extrinsics, path_focal, path_near, path_far, _ = generate_camera_params(opt.renderer_output_size, device, batch=path_batch_size,
             uniform=opt.camera.uniform, azim_range=opt.camera.azim,
             elev_range=opt.camera.elev, fov_ang=opt.camera.fov,

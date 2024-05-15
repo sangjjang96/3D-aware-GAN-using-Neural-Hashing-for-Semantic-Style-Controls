@@ -25,6 +25,17 @@ try:
 except ImportError:
     wandb = None
 
+# seed = 2021
+# deterministic = True
+
+# random.seed(seed)
+# np.random.seed(seed)
+# torch.manual_seed(seed)
+# torch.cuda.manual_seed_all(seed)
+# if deterministic:
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
+# torch.autograd.set_detect_anomaly(True)
 
 def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator, s_discriminator, g_optim, gd_optim, sd_optim, g_ema, device):
     loader = sample_data(loader)
@@ -44,7 +55,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
 
     accum = 0.5 ** (32 / (10 * 1000))
 
-    sample_z = [torch.randn(opt.val_n_sample, 256, device=device).repeat_interleave(8,dim=0)]     # original = []     modified = X
+    sample_z = [torch.randn(opt.val_n_sample, 16, device=device).repeat_interleave(8,dim=0)]     # original = []     modified = X
     sample_cam_extrinsics, sample_focals, sample_near, sample_far, _ = generate_camera_params(
         opt.renderer_output_size, device, batch=opt.val_n_sample, sweep=True,
         uniform=opt.camera.uniform, azim_range=opt.camera.azim,
@@ -106,7 +117,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
         real_imgs = real_imgs.to(device)
         real_masks = real_masks.to(device)
 
-        noise = mixing_noise(opt.batch, 256, opt.mixing, device)
+        noise = mixing_noise(opt.batch, 16, opt.mixing, device)
         cam_extrinsics, focal, near, far, gt_viewpoints = generate_camera_params(
             opt.renderer_output_size, device, batch=opt.batch,
             uniform=opt.camera.uniform, azim_range=opt.camera.azim,
@@ -192,7 +203,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
         requires_grad(s_discriminator, False)
 
         for j in range(0, opt.batch, opt.chunk):
-            noise = mixing_noise(opt.chunk, 256, opt.mixing, device)
+            noise = mixing_noise(opt.chunk, 16, opt.mixing, device)
             # noise2 = mixing_noise(opt.chunk, 4, opt.mixing, device)
             cam_extrinsics, focal, near, far, curr_gt_viewpoints = generate_camera_params(
                 opt.renderer_output_size, device, batch=opt.chunk,uniform=opt.camera.uniform, azim_range=opt.camera.azim,
@@ -412,7 +423,7 @@ if __name__ == "__main__":
     
     g_ema.eval()
     accumulate(g_ema, generator, 0)
-    g_optim = optim.Adam(generator.parameters(), lr=3e-5, betas=(0, 0.9))
+    g_optim = optim.Adam(generator.parameters(), lr=2e-5, betas=(0, 0.9))
     gd_optim = optim.Adam(g_discriminator.parameters(), lr=2e-4, betas=(0, 0.9))
     sd_optim = optim.Adam(s_discriminator.parameters(), lr=2e-4, betas=(0, 0.9))
 
