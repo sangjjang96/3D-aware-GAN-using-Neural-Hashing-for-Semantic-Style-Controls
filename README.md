@@ -15,13 +15,13 @@ python3 data/preprocess_celeba.py data/CelebAMask-HQ
 
 ## Training Stage 1
 ```
-CUDA_VISIBLE_DEVICES=0 python3 train.py --curriculum CelebA --output_dir OUTPUTDIR          # Single GPU
-CUDA_VISIBLE_DEVICES=0,1,2,3 python3 train.py --curriculum CelebA --output_dir OUTPUTDIR    # Multiple GPUs
+python3 train.py --expname EXPNAME --size 64                        # Single GPU
+CUDA_VISIBLE_DEVICES=0,1,2,3 python3 -m torch.distributed.launch --master_port 1234 --nproc_per_node 4 train.py --expname EXPNAME --size 64    # Multiple GPUs
 ```
 
 ## Training Stage 2
 Make sure DO NOT use Multi GPUs!
 Path Regularization does not work with Multi GPUs
 ```
-CUDA_VISIBLE_DEVICES=0 python3 train.py --curriculum CelebA --output_dir OUTPUTDIR          # Single GPU
+python3 train.py --expname EXPNAME USED IN STAGE 1 --size 256 --pretrain_render_path ./checkpoints/EXPNAME USED IN STAGE 1/EXPNAME_vol_renderer.pt
 ```
