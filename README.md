@@ -1,5 +1,7 @@
 # HashGAN
 
+![Teaser](https://github.com/sangjjang96/3D-aware-GAN-using-Neural-Hashing-for-Semantic-Style-Controls/assets/59731956/9bf57599-78f3-4361-a9ab-3b6b144f3e81)
+
 ## Preprocess Dataset
 1. Download Celeba Mask-HQ dataset [here](https://drive.google.com/file/d/1badu11NqxGf6qM3PTTooQDJvQbejgbTv/view) 
 
