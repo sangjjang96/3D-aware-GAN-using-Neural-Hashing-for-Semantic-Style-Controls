@@ -1,4 +1,4 @@
-# HashGAN
+# 3D aware GAN using Neural Hashing for Semantic Style Controls
 [paper](https://www.riss.kr/link?id=T16938395)
 
 ![Teaser](https://github.com/sangjjang96/3D-aware-GAN-using-Neural-Hashing-for-Semantic-Style-Controls/assets/59731956/9bf57599-78f3-4361-a9ab-3b6b144f3e81)
