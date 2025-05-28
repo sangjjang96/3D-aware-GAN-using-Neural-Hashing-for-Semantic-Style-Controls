@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 import tinycudann as tcnn
 
-class BRIGHT(nn.Module):
+class Hash_Mapping(nn.Module):
     def __init__(self, num_seg, latent):
         super().__init__()
 

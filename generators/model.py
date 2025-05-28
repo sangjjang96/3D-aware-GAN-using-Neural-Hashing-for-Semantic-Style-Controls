@@ -9,7 +9,7 @@ from .volume_renderer import VolumeFeatureRenderer
 from .op import FusedLeakyReLU, fused_leaky_relu, upfirdn2d
 import pdb
 
-from .bright import BRIGHT
+from .hash_mapping import Hash_Mapping
 
 from .utils import (
     create_cameras,
@@ -498,7 +498,7 @@ class Decoder(nn.Module):
             )
 
         self.style = nn.Sequential(*layers) # 5 layers
-        self.bright = BRIGHT(9, self.style_dim)
+        self.hash_mapping = Hash_Mapping(9, self.style_dim)
 
         # decoder network
         self.channels = {
@@ -564,7 +564,7 @@ class Decoder(nn.Module):
 
     def mean_latent(self, renderer_latent):
         latent = self.style(renderer_latent).mean(0, keepdim=True)
-        # latent = self.bright(renderer_latent).mean(0, keepdim=True)
+        # latent = self.hash_mapping(renderer_latent).mean(0, keepdim=True)
 
         return latent
 
@@ -576,7 +576,7 @@ class Decoder(nn.Module):
                                  randomize_noise=True):
         if not input_is_latent:
             styles = [self.style(s) for s in styles]
-            # styles = [self.bright(s) for s in styles]
+            # styles = [self.hash_mapping(s) for s in styles]
 
         if noise is None:
             if randomize_noise:
@@ -676,7 +676,7 @@ class Generator(nn.Module):
         thumb_im_size = model_opt.renderer_spatial_output_dim
 
         self.renderer = VolumeFeatureRenderer(renderer_opt, style_dim=self.style_dim, out_im_res=thumb_im_size)
-        self.bright = BRIGHT(9, self.style_dim)
+        self.hash_mapping = Hash_Mapping(9, self.style_dim)
 
         self.n_branch = renderer_opt.n_render
         self.shape_n = renderer_opt.depth
@@ -700,7 +700,7 @@ class Generator(nn.Module):
 
     def mean_latent(self, n_latent, device):
         latent_in = torch.randn(n_latent, 16, device=device)
-        renderer_latent = self.bright(latent_in)
+        renderer_latent = self.hash_mapping(latent_in)
         renderer_latent_mean = renderer_latent.mean(0, keepdim=True)
         if self.full_pipeline:
             decoder_latent_mean = self.decoder.mean_latent(renderer_latent)
@@ -711,7 +711,7 @@ class Generator(nn.Module):
 
     def get_latent(self, input):
         # return self.style(input)
-        return self.bright(input)
+        return self.hash_mapping(input)
 
     def expand_latents(self, latent):
         assert latent.ndim == 3
@@ -764,7 +764,7 @@ class Generator(nn.Module):
         #     s.requires_grad = True
 
         if not input_is_latent:
-            styles = [self.bright(s) for s in styles]
+            styles = [self.hash_mapping(s) for s in styles]
             # styles = self.style(styles)
 
         if truncation < 1:
@@ -781,7 +781,7 @@ class Generator(nn.Module):
         
         if mix_styles:
             styles = self.mix_styles(styles, inject_index)
-            # styles = self.bright(styles)
+            # styles = self.hash_mapping(styles)
 
         return styles, styles_global
     
