@@ -189,7 +189,7 @@ class VolumeFeatureRenderer(nn.Module):
         with open("config.json") as f:
             self.config = json.load(f)
             
-        self.tcnn_encoding = tcnn.Encoding(3, self.config["encoding"], dtype=torch.float32)        
+        self.hash_encoding = tcnn.Encoding(3, self.config["encoding"], dtype=torch.float32)        
 
         self.n_branch = opt.n_render
         self.shape_n = opt.depth
@@ -355,7 +355,7 @@ class VolumeFeatureRenderer(nn.Module):
             normalized_pts = pts
         
         normalized_pts_ori = normalized_pts
-        normalized_pts = self.tcnn_encoding(normalized_pts.view(-1, 3))
+        normalized_pts = self.hash_encoding(normalized_pts.view(-1, 3))
         normalized_pts = normalized_pts.view(normalized_pts_ori.shape[0], normalized_pts_ori.shape[1], normalized_pts_ori.shape[2], normalized_pts_ori.shape[3], -1)
 
         raw = self.run_network(normalized_pts, viewdirs, styles=styles, init=False)
