@@ -19,6 +19,7 @@ from datasets import CelebA, color_segmap
 # from dataset import MultiResolutionDataset, color_segmap
 from generators.utils import data_sampler, requires_grad, accumulate, sample_data, mixing_noise, generate_camera_params
 from distributed import get_rank, synchronize, reduce_loss_dict
+from fid import *
 
 try:
     import wandb
@@ -37,8 +38,15 @@ except ImportError:
 #     torch.backends.cudnn.benchmark = False
 # torch.autograd.set_detect_anomaly(True)
 
-def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator, s_discriminator, g_optim, gd_optim, sd_optim, g_ema, device):
+def train(opt, experiment_opt, rendering_opt, loader, loader_tmp, generator, g_discriminator, s_discriminator, g_optim, gd_optim, sd_optim, g_ema, device):
+    latent_dim = 32
+
+    block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
+    model = InceptionV3([block_idx])
+    model = model.cuda()
+
     loader = sample_data(loader)
+    loader_tmp = sample_data(loader_tmp)
 
     loss_dict = {}
 
@@ -55,7 +63,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
 
     accum = 0.5 ** (32 / (10 * 1000))
 
-    sample_z = [torch.randn(opt.val_n_sample, 16, device=device).repeat_interleave(8,dim=0)]     # original = []     modified = X
+    sample_z = [torch.randn(opt.val_n_sample, latent_dim, device=device).repeat_interleave(8,dim=0)]     # original = []     modified = X
     sample_cam_extrinsics, sample_focals, sample_near, sample_far, _ = generate_camera_params(
         opt.renderer_output_size, device, batch=opt.val_n_sample, sweep=True,
         uniform=opt.camera.uniform, azim_range=opt.camera.azim,
@@ -117,7 +125,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
         real_imgs = real_imgs.to(device)
         real_masks = real_masks.to(device)
 
-        noise = mixing_noise(opt.batch, 16, opt.mixing, device)
+        noise = mixing_noise(opt.batch, latent_dim, opt.mixing, device)
         cam_extrinsics, focal, near, far, gt_viewpoints = generate_camera_params(
             opt.renderer_output_size, device, batch=opt.batch,
             uniform=opt.camera.uniform, azim_range=opt.camera.azim,
@@ -203,7 +211,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
         requires_grad(s_discriminator, False)
 
         for j in range(0, opt.batch, opt.chunk):
-            noise = mixing_noise(opt.chunk, 16, opt.mixing, device)
+            noise = mixing_noise(opt.chunk, latent_dim, opt.mixing, device)
             # noise2 = mixing_noise(opt.chunk, 4, opt.mixing, device)
             cam_extrinsics, focal, near, far, curr_gt_viewpoints = generate_camera_params(
                 opt.renderer_output_size, device, batch=opt.chunk,uniform=opt.camera.uniform, azim_range=opt.camera.azim,
@@ -309,11 +317,46 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
 
 
         if get_rank() == 0:
-            pbar.set_description(
-                (f"d_gan: {d_gan_val:.4f}; sd_gan: {sd_gan_val:.4f}; g_gan: {g_gan_val:.4f}; eikonal: {g_eikonal_val:.4f}; surf: {g_minimal_surface_val:.4f};") # more can be added
-            )
 
-            if i % 500 == 0:
+            if i % 1000 != 0:
+                pbar.set_description(
+                    (f"d_gan: {d_gan_val:.4f}; sd_gan: {sd_gan_val:.4f}; g_gan: {g_gan_val:.4f}; eikonal: {g_eikonal_val:.4f}; surf: {g_minimal_surface_val:.4f};") # more can be added
+                )
+            else:
+                _, real_imgs_tmp, _ = next(loader_tmp)
+                real_imgs_tmp = (real_imgs_tmp+1)/2.0
+
+                sample_z_tmp = [torch.randn(128, 32, device=device)]
+                sample_cam_extrinsics_tmp, sample_focals_tmp, sample_near_tmp, sample_far_tmp, _ = generate_camera_params(
+                    64, device, batch=128, sweep=True,
+                    uniform=opt.camera.uniform, azim_range=opt.camera.azim,
+                    elev_range=opt.camera.elev, fov_ang=opt.camera.fov,
+                    dist_radius=opt.camera.dist_radius
+                )
+
+                with torch.no_grad():
+                    mean_latent_tmp = g_module.mean_latent(1000, device)
+
+                    samples_tmp = torch.Tensor(0, 3, 64, 64)
+
+                    for k in range(128):
+                        _, curr_samples_tmp, _ = g_ema([sample_z_tmp[0][k:k+1]],     # original = [sample_z[0]]    modified = sample_z
+                                                sample_cam_extrinsics_tmp[k:k+1],
+                                                sample_focals_tmp[k:k+1],
+                                                sample_near_tmp[k:k+1],
+                                                sample_far_tmp[k:k+1],
+                                                truncation=0.7,
+                                                truncation_latent=mean_latent_tmp,)
+                        samples_tmp = torch.cat([samples_tmp, (curr_samples_tmp.cpu()+1)/2.0], 0)
+                
+                fid_val = calculate_fretchet(real_imgs_tmp,samples_tmp,model) 
+
+                pbar.set_description(
+                    (f"d_gan: {d_gan_val:.4f}; sd_gan: {sd_gan_val:.4f}; g_gan: {g_gan_val:.4f}; eikonal: {g_eikonal_val:.4f}; surf: {g_minimal_surface_val:.4f}; fid: {fid_val:.4f};") # more can be added
+                )
+
+
+            if i % 1000 == 0:
                 with torch.no_grad():
                     samples = torch.Tensor(0, 3, opt.renderer_output_size, opt.renderer_output_size * 2)
                     sdf_s = torch.Tensor(0, 1, opt.renderer_output_size, opt.renderer_output_size)
@@ -329,7 +372,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
                                                 truncation_latent=mean_latent,)
                         samples = torch.cat([samples, torch.cat([(curr_samples.cpu()+1)/2.0 * 255.0, color_segmap(curr_seg).cpu()], dim=-1)], 0)
 
-                    if i % 1000 == 0:
+                    if i % 10000 == 0:
                         utils.save_image(samples,
                             os.path.join(opt.checkpoints_dir, experiment_opt.expname, 'volume_renderer', f"samples/{str(i).zfill(7)}.png"),
                             nrow=int(opt.val_n_sample),
@@ -355,7 +398,7 @@ def train(opt, experiment_opt, rendering_opt, loader, generator, g_discriminator
                                   "G GAN Semantic loss": g_gan_s_val,
                                   }
 
-                if i % 500 == 0:
+                if i % 1000 == 0:
                     wandb_grid = utils.make_grid(samples, nrow=int(opt.val_n_sample),
                                                    normalize=True,)
                     wandb_ndarr = (255 * wandb_grid.permute(1, 2, 0).numpy()).astype(np.uint8)
@@ -401,7 +444,7 @@ if __name__ == "__main__":
     opt.training.with_sdf = not opt.rendering.no_sdf
     if opt.training.with_sdf and opt.training.min_surf_lambda > 0:
         opt.rendering.return_sdf = True
-    opt.training.iter = 300001
+    opt.training.iter = 500001
     opt.rendering.no_features_output = True
     
     n_gpu = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
@@ -508,6 +551,13 @@ if __name__ == "__main__":
     )
     opt.training.dataset_name = opt.dataset.dataset_path.lower()
 
+    loader_tmp = data.DataLoader(
+        dataset,
+        batch_size=128,
+        sampler=data_sampler(dataset, shuffle=True, distributed=opt.training.distributed),
+        drop_last=True,
+    )
+
     opt_path = os.path.join(opt.training.checkpoints_dir, opt.experiment.expname, 'volume_renderer', f"opt.yaml")
     with open(opt_path,'w') as f:
         yaml.safe_dump(opt, f)
@@ -521,4 +571,4 @@ if __name__ == "__main__":
         wandb.config.update(opt.rendering)
 
     
-    train(opt.training, opt.experiment, opt.rendering, loader, generator, g_discriminator, s_discriminator, g_optim, gd_optim, sd_optim, g_ema, device)
+    train(opt.training, opt.experiment, opt.rendering, loader, loader_tmp, generator, g_discriminator, s_discriminator, g_optim, gd_optim, sd_optim, g_ema, device)
