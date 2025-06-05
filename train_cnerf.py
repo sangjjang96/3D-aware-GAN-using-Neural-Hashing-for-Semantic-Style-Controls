@@ -16,7 +16,7 @@ from losses import *
 from options import BaseOptions
 from generators.model import Generator, VolumeRenderDiscriminator, ComponentDualBranchDiscriminator
 from datasets import CelebA, color_segmap
-# from dataset import MultiResolutionDataset, color_segmap
+from dataset import MultiResolutionDataset, color_segmap
 from generators.utils import data_sampler, requires_grad, accumulate, sample_data, mixing_noise, generate_camera_params
 from distributed import get_rank, synchronize, reduce_loss_dict
 from fid import *
@@ -444,7 +444,7 @@ if __name__ == "__main__":
     opt.training.with_sdf = not opt.rendering.no_sdf
     if opt.training.with_sdf and opt.training.min_surf_lambda > 0:
         opt.rendering.return_sdf = True
-    opt.training.iter = 500001
+    opt.training.iter = 300001
     opt.rendering.no_features_output = True
     
     n_gpu = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
@@ -540,9 +540,9 @@ if __name__ == "__main__":
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)])
 
     # dataset_path, mask_path, img_size, label_size
-    dataset = CelebA(opt.dataset.dataset_path, opt.dataset.mask_path, opt.model.size, opt.model.label_size)
-    # dataset = MultiResolutionDataset(opt.dataset.dataset_path, transform, opt.model.size,
-    #                                  opt.model.renderer_spatial_output_dim)
+    # dataset = CelebA(opt.dataset.dataset_path, opt.dataset.mask_path, opt.model.size, opt.model.label_size)
+    dataset = MultiResolutionDataset(opt.dataset.data_path, transform, opt.model.size,
+                                     opt.model.renderer_spatial_output_dim)
     loader = data.DataLoader(
         dataset,
         batch_size=opt.training.batch,
